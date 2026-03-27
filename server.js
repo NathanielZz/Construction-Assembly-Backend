@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const Progress = require("./models/Progress.js");
@@ -17,8 +18,30 @@ mongoose.connect(process.env.MONGO_URI)
     process.exit(1);
   });
 
-// Get all entries (with optional filter)
-app.get("/progress", async (req, res) => {
+// 🔓 Login route — validates password and returns a token
+app.post("/auth/login", (req, res) => {
+  const { password } = req.body;
+  if (password !== process.env.SECRET_KEY) {
+    return res.status(401).json({ error: "Incorrect password" });
+  }
+  const token = jwt.sign({ access: true }, process.env.JWT_SECRET, { expiresIn: "8h" });
+  res.json({ token });
+});
+
+// 🔒 Auth middleware — protects all /progress routes
+function requireAuth(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "No token provided" });
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    return res.status(403).json({ error: "Invalid or expired token" });
+  }
+}
+
+app.get("/progress", requireAuth, async (req, res) => {
   try {
     const { category } = req.query;
     const query = category && category !== "all" ? { category } : {};
@@ -29,8 +52,7 @@ app.get("/progress", async (req, res) => {
   }
 });
 
-// Add new entry
-app.post("/progress", async (req, res) => {
+app.post("/progress", requireAuth, async (req, res) => {
   try {
     const newLog = new Progress(req.body);
     await newLog.save();
@@ -40,8 +62,7 @@ app.post("/progress", async (req, res) => {
   }
 });
 
-// Update an entry by ID
-app.put("/progress/:id", async (req, res) => {
+app.put("/progress/:id", requireAuth, async (req, res) => {
   try {
     const updatedLog = await Progress.findByIdAndUpdate(
       req.params.id,
@@ -55,8 +76,7 @@ app.put("/progress/:id", async (req, res) => {
   }
 });
 
-// Delete an entry by ID
-app.delete("/progress/:id", async (req, res) => {
+app.delete("/progress/:id", requireAuth, async (req, res) => {
   try {
     const deletedLog = await Progress.findByIdAndDelete(req.params.id);
     if (!deletedLog) return res.status(404).json({ error: "Entry not found" });
@@ -66,16 +86,11 @@ app.delete("/progress/:id", async (req, res) => {
   }
 });
 
-// ✅ Universal search across all fields
-app.get("/progress/search", async (req, res) => {
+app.get("/progress/search", requireAuth, async (req, res) => {
   try {
     const { q } = req.query;
-    if (!q) {
-      return res.status(400).json({ error: "Search query (q) is required" });
-    }
-
-    const regex = new RegExp(q, "i"); // case-insensitive
-
+    if (!q) return res.status(400).json({ error: "Search query (q) is required" });
+    const regex = new RegExp(q, "i");
     const results = await Progress.find({
       $or: [
         { title: regex },
@@ -85,7 +100,6 @@ app.get("/progress/search", async (req, res) => {
         { items: { $elemMatch: { quantity: regex } } }
       ]
     }).sort({ category: 1, title: 1 });
-
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
