@@ -2,27 +2,9 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const multer = require("multer");
 require("dotenv").config();
 
 const Progress = require("./models/Progress.js");
-
-// ✅ Cloudinary setup using CLOUDINARY_URL
-const cloudinary = require("cloudinary").v2;
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-
-// Cloudinary will automatically read CLOUDINARY_URL from .env
-cloudinary.config({ secure: true });
-
-// ✅ Use Cloudinary storage for Multer
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "progress_images", // Cloudinary folder name
-    allowed_formats: ["jpg", "png", "jpeg"],
-  },
-});
-const upload = multer({ storage });
 
 const app = express();
 app.use(cors());
@@ -67,42 +49,48 @@ app.get("/progress", requireAuth, async (req, res) => {
     const logs = await Progress.find(query).sort({ category: 1, title: 1 });
     res.json(logs);
   } catch (err) {
+    console.error("Error in GET /progress:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Create new entry with Cloudinary upload
-app.post("/progress", requireAuth, upload.single("image"), async (req, res) => {
+// ✅ Create new entry
+app.post("/progress", requireAuth, async (req, res) => {
   try {
+    let items = [];
+    try {
+      items = JSON.parse(req.body.items);
+    } catch (parseErr) {
+      console.error("Items parse error:", parseErr);
+      return res.status(400).json({ error: "Invalid items JSON" });
+    }
+
     const newLog = new Progress({
-      category: req.body.category, // ✅ camelCase category
+      category: req.body.category,
       title: req.body.title,
-      items: JSON.parse(req.body.items),
-      image: req.file ? req.file.path : null,       // ✅ Cloudinary URL
-      publicId: req.file ? req.file.filename : null // ✅ Cloudinary public_id
+      items,
     });
+
     await newLog.save();
     res.json(newLog);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("Error in POST /progress:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Update entry with Cloudinary upload (delete old image if replaced)
-app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) => {
+// ✅ Update entry
+app.put("/progress/:id", requireAuth, async (req, res) => {
   try {
     const existing = await Progress.findById(req.params.id);
     if (!existing) return res.status(404).json({ error: "Entry not found" });
 
-    let imageUrl = existing.image;
-    let publicId = existing.publicId;
-
-    if (req.file) {
-      if (existing.publicId) {
-        await cloudinary.uploader.destroy(existing.publicId);
-      }
-      imageUrl = req.file.path;      // ✅ Cloudinary URL
-      publicId = req.file.filename;  // ✅ Cloudinary public_id
+    let items = [];
+    try {
+      items = JSON.parse(req.body.items);
+    } catch (parseErr) {
+      console.error("Items parse error:", parseErr);
+      return res.status(400).json({ error: "Invalid items JSON" });
     }
 
     const updatedLog = await Progress.findByIdAndUpdate(
@@ -110,31 +98,27 @@ app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) =
       {
         category: req.body.category,
         title: req.body.title,
-        items: JSON.parse(req.body.items),
-        image: imageUrl,
-        publicId: publicId
+        items,
       },
       { new: true, runValidators: true }
     );
 
     res.json(updatedLog);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("Error in PUT /progress:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Delete entry and its Cloudinary image
+// ✅ Delete entry
 app.delete("/progress/:id", requireAuth, async (req, res) => {
   try {
     const deletedLog = await Progress.findByIdAndDelete(req.params.id);
     if (!deletedLog) return res.status(404).json({ error: "Entry not found" });
 
-    if (deletedLog.publicId) {
-      await cloudinary.uploader.destroy(deletedLog.publicId);
-    }
-
-    res.json({ message: "Entry and image deleted successfully" });
+    res.json({ message: "Entry deleted successfully" });
   } catch (err) {
+    console.error("Error in DELETE /progress:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -156,6 +140,30 @@ app.get("/progress/search", requireAuth, async (req, res) => {
     }).sort({ category: 1, title: 1 });
     res.json(results);
   } catch (err) {
+    console.error("Error in SEARCH /progress:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Download entries as plain text
+app.get("/progress/download", requireAuth, async (req, res) => {
+  try {
+    const logs = await Progress.find().sort({ category: 1, title: 1 });
+
+    let output = "Materials List\n\n";
+    logs.forEach(log => {
+      output += `Title: ${log.title}\nCategory: ${log.category}\n`;
+      log.items.forEach(item => {
+        output += `  - Code: ${item.code}, Quantity: ${item.quantity}, Description: ${item.description}\n`;
+      });
+      output += "\n";
+    });
+
+    res.setHeader("Content-Disposition", "attachment; filename=materials.txt");
+    res.setHeader("Content-Type", "text/plain");
+    res.send(output);
+  } catch (err) {
+    console.error("Error in DOWNLOAD /progress:", err);
     res.status(500).json({ error: err.message });
   }
 });
