@@ -2,11 +2,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-<<<<<<< HEAD
-const multer = require("multer"); // 👈 added
+const multer = require("multer"); // for file uploads
 const path = require("path");
-=======
->>>>>>> 0717a872c9ab295f7f562b812a436909297bb605
 require("dotenv").config();
 
 const Progress = require("./models/Progress.js");
@@ -15,7 +12,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-<<<<<<< HEAD
 // ✅ Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -30,8 +26,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-=======
->>>>>>> 0717a872c9ab295f7f562b812a436909297bb605
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
@@ -74,7 +68,6 @@ app.get("/progress", requireAuth, async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
 // ✅ Create new entry with image upload
 app.post("/progress", requireAuth, upload.single("image"), async (req, res) => {
   try {
@@ -84,11 +77,6 @@ app.post("/progress", requireAuth, upload.single("image"), async (req, res) => {
       items: JSON.parse(req.body.items),
       image: req.file ? `/uploads/${req.file.filename}` : null,
     });
-=======
-app.post("/progress", requireAuth, async (req, res) => {
-  try {
-    const newLog = new Progress(req.body);
->>>>>>> 0717a872c9ab295f7f562b812a436909297bb605
     await newLog.save();
     res.json(newLog);
   } catch (err) {
@@ -96,7 +84,6 @@ app.post("/progress", requireAuth, async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
 // ✅ Update entry with image upload
 app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) => {
   try {
@@ -108,13 +95,6 @@ app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) =
         items: JSON.parse(req.body.items),
         image: req.file ? `/uploads/${req.file.filename}` : req.body.image,
       },
-=======
-app.put("/progress/:id", requireAuth, async (req, res) => {
-  try {
-    const updatedLog = await Progress.findByIdAndUpdate(
-      req.params.id,
-      req.body,
->>>>>>> 0717a872c9ab295f7f562b812a436909297bb605
       { new: true, runValidators: true }
     );
     if (!updatedLog) return res.status(404).json({ error: "Entry not found" });
@@ -155,8 +135,4 @@ app.get("/progress/search", requireAuth, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-<<<<<<< HEAD
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-=======
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
->>>>>>> 0717a872c9ab295f7f562b812a436909297bb605
