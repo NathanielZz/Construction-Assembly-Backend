@@ -2,7 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const multer = require("multer"); // for file uploads
+const multer = require("multer");
 const path = require("path");
 require("dotenv").config();
 
@@ -17,12 +17,8 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Configure multer storage
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
 });
 const upload = multer({ storage });
 
@@ -34,7 +30,7 @@ mongoose.connect(process.env.MONGO_URI)
     process.exit(1);
   });
 
-// 🔓 Login route — validates password and returns a token
+// 🔓 Login route
 app.post("/auth/login", (req, res) => {
   const { password } = req.body;
   if (password !== process.env.SECRET_KEY) {
@@ -44,7 +40,7 @@ app.post("/auth/login", (req, res) => {
   res.json({ token });
 });
 
-// 🔒 Auth middleware — protects all /progress routes
+// 🔒 Auth middleware
 function requireAuth(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -57,10 +53,11 @@ function requireAuth(req, res, next) {
   }
 }
 
+// ✅ Get entries
 app.get("/progress", requireAuth, async (req, res) => {
   try {
     const { category } = req.query;
-    const query = category && category !== "all" ? { category } : {};
+    const query = category && category !== "all" ? { category: category.toLowerCase() } : {};
     const logs = await Progress.find(query).sort({ category: 1, title: 1 });
     res.json(logs);
   } catch (err) {
@@ -72,7 +69,7 @@ app.get("/progress", requireAuth, async (req, res) => {
 app.post("/progress", requireAuth, upload.single("image"), async (req, res) => {
   try {
     const newLog = new Progress({
-      category: req.body.category,
+      category: req.body.category?.toLowerCase(),
       title: req.body.title,
       items: JSON.parse(req.body.items),
       image: req.file ? `/uploads/${req.file.filename}` : null,
@@ -90,10 +87,10 @@ app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) =
     const updatedLog = await Progress.findByIdAndUpdate(
       req.params.id,
       {
-        category: req.body.category,
+        category: req.body.category?.toLowerCase(),
         title: req.body.title,
         items: JSON.parse(req.body.items),
-        image: req.file ? `/uploads/${req.file.filename}` : req.body.image,
+        image: req.file ? `/uploads/${req.file.filename}` : req.body.image || null,
       },
       { new: true, runValidators: true }
     );
@@ -104,6 +101,7 @@ app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) =
   }
 });
 
+// ✅ Delete entry
 app.delete("/progress/:id", requireAuth, async (req, res) => {
   try {
     const deletedLog = await Progress.findByIdAndDelete(req.params.id);
@@ -114,6 +112,7 @@ app.delete("/progress/:id", requireAuth, async (req, res) => {
   }
 });
 
+// ✅ Search entries
 app.get("/progress/search", requireAuth, async (req, res) => {
   try {
     const { q } = req.query;
@@ -136,3 +135,4 @@ app.get("/progress/search", requireAuth, async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  
