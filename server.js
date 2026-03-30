@@ -3,24 +3,33 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
-const path = require("path");
 require("dotenv").config();
 
 const Progress = require("./models/Progress.js");
 
+// ✅ Cloudinary setup
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_API_KEY,
+  api_secret: process.env.CLOUD_API_SECRET,
+});
+
+// ✅ Use Cloudinary storage for Multer
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "progress_images", // Cloudinary folder name
+    allowed_formats: ["jpg", "png", "jpeg"],
+  },
+});
+const upload = multer({ storage });
+
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-// ✅ Serve uploaded images statically
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Configure multer storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
-});
-const upload = multer({ storage });
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
@@ -65,14 +74,14 @@ app.get("/progress", requireAuth, async (req, res) => {
   }
 });
 
-// ✅ Create new entry with image upload
+// ✅ Create new entry with Cloudinary upload
 app.post("/progress", requireAuth, upload.single("image"), async (req, res) => {
   try {
     const newLog = new Progress({
       category: req.body.category?.toLowerCase(),
       title: req.body.title,
       items: JSON.parse(req.body.items),
-      image: req.file ? `/uploads/${req.file.filename}` : null,
+      image: req.file ? req.file.path : null, // Cloudinary returns a full URL
     });
     await newLog.save();
     res.json(newLog);
@@ -81,11 +90,24 @@ app.post("/progress", requireAuth, upload.single("image"), async (req, res) => {
   }
 });
 
-// ✅ Update entry with image upload (preserve old image if none uploaded)
+// ✅ Update entry with Cloudinary upload (delete old image if replaced)
 app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) => {
   try {
     const existing = await Progress.findById(req.params.id);
     if (!existing) return res.status(404).json({ error: "Entry not found" });
+
+    let imageUrl = existing.image;
+
+    // If a new file is uploaded, delete the old one from Cloudinary
+    if (req.file) {
+      if (existing.image) {
+        const parts = existing.image.split("/");
+        const publicIdWithExt = parts.slice(-2).join("/"); // progress_images/filename.jpg
+        const publicId = publicIdWithExt.replace(/\.[^/.]+$/, ""); // remove extension
+        await cloudinary.uploader.destroy(publicId);
+      }
+      imageUrl = req.file.path; // new Cloudinary URL
+    }
 
     const updatedLog = await Progress.findByIdAndUpdate(
       req.params.id,
@@ -93,22 +115,32 @@ app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) =
         category: req.body.category?.toLowerCase(),
         title: req.body.title,
         items: JSON.parse(req.body.items),
-        image: req.file ? `/uploads/${req.file.filename}` : existing.image,
+        image: imageUrl,
       },
       { new: true, runValidators: true }
     );
+
     res.json(updatedLog);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// ✅ Delete entry
+// ✅ Delete entry and its Cloudinary image
 app.delete("/progress/:id", requireAuth, async (req, res) => {
   try {
     const deletedLog = await Progress.findByIdAndDelete(req.params.id);
     if (!deletedLog) return res.status(404).json({ error: "Entry not found" });
-    res.json({ message: "Entry deleted successfully" });
+
+    // If entry had an image, delete it from Cloudinary
+    if (deletedLog.image) {
+      const parts = deletedLog.image.split("/");
+      const publicIdWithExt = parts.slice(-2).join("/"); // progress_images/filename.jpg
+      const publicId = publicIdWithExt.replace(/\.[^/.]+$/, ""); // remove extension
+      await cloudinary.uploader.destroy(publicId);
+    }
+
+    res.json({ message: "Entry and image deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -137,3 +169,4 @@ app.get("/progress/search", requireAuth, async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  
