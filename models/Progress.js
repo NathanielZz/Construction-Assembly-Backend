@@ -7,9 +7,10 @@ const itemSchema = new mongoose.Schema({
 });
 
 const progressSchema = new mongoose.Schema({
-  category: { type: String, required: true, lowercase: true, trim: true },
+  category: { type: String, required: true, trim: true }, // ✅ camelCase category
   title: { type: String, required: true, trim: true },
-  image: { type: String }, // optional image path
+  image: { type: String },     // Cloudinary URL
+  publicId: { type: String },  // Cloudinary public_id for deletion
   items: [itemSchema]
 }, { timestamps: true });
 
