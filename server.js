@@ -81,20 +81,22 @@ app.post("/progress", requireAuth, upload.single("image"), async (req, res) => {
   }
 });
 
-// ✅ Update entry with image upload
+// ✅ Update entry with image upload (preserve old image if none uploaded)
 app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) => {
   try {
+    const existing = await Progress.findById(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Entry not found" });
+
     const updatedLog = await Progress.findByIdAndUpdate(
       req.params.id,
       {
         category: req.body.category?.toLowerCase(),
         title: req.body.title,
         items: JSON.parse(req.body.items),
-        image: req.file ? `/uploads/${req.file.filename}` : req.body.image || null,
+        image: req.file ? `/uploads/${req.file.filename}` : existing.image,
       },
       { new: true, runValidators: true }
     );
-    if (!updatedLog) return res.status(404).json({ error: "Entry not found" });
     res.json(updatedLog);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -135,4 +137,3 @@ app.get("/progress/search", requireAuth, async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-  

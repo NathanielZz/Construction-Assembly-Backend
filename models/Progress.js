@@ -7,7 +7,7 @@ const itemSchema = new mongoose.Schema({
 });
 
 const progressSchema = new mongoose.Schema({
-  category: { type: String, required: true, lowercase: true, trim: true }, // ✅ enforce lowercase + trim
+  category: { type: String, required: true, lowercase: true, trim: true },
   title: { type: String, required: true, trim: true },
   image: { type: String }, // optional image path
   items: [itemSchema]
