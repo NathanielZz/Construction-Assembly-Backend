@@ -182,7 +182,7 @@ app.get("/progress/download", requireAuth, async (req, res) => {
     res.setHeader("Content-Type", "text/plain");
     res.send(output);
   } catch (err) {
-    console.error("Error in DOWNLOAD /progress:", err);
+    console.error("Error in DOWNLOAD /progress:", err.message, err.stack, err);
     res.status(500).json({ error: err.message });
   }
 });
