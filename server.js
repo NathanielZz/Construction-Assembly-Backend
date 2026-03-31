@@ -4,7 +4,9 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
+
 const Progress = require("./models/Progress.js");
+const upload = require("./config/multer");
 
 const app = express();
 app.use(cors());
@@ -54,23 +56,22 @@ app.get("/progress", requireAuth, async (req, res) => {
   }
 });
 
-// ✅ Create new entry
-app.post("/progress", requireAuth, async (req, res) => {
+
+// ✅ Create new entry with image
+app.post("/progress", requireAuth, upload.single("image"), async (req, res) => {
   try {
-    let items = [];
-    try {
-      items = JSON.parse(req.body.items);
-    } catch (parseErr) {
-      console.error("Items parse error:", parseErr);
-      return res.status(400).json({ error: "Invalid items JSON" });
+    const { category, title, items } = req.body;
+    let parsedItems = items;
+    if (typeof items === "string") {
+      parsedItems = JSON.parse(items);
     }
-
+    const imageUrl = req.file ? req.file.path : "";
     const newLog = new Progress({
-      category: req.body.category,
-      title: req.body.title,
-      items,
+      category,
+      title,
+      items: parsedItems,
+      image: imageUrl
     });
-
     await newLog.save();
     res.json(newLog);
   } catch (err) {
@@ -79,26 +80,30 @@ app.post("/progress", requireAuth, async (req, res) => {
   }
 });
 
-// ✅ Update entry
-app.put("/progress/:id", requireAuth, async (req, res) => {
+
+// ✅ Update entry with image
+app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) => {
   try {
     const existing = await Progress.findById(req.params.id);
     if (!existing) return res.status(404).json({ error: "Entry not found" });
 
-    let items = [];
-    try {
-      items = JSON.parse(req.body.items);
-    } catch (parseErr) {
-      console.error("Items parse error:", parseErr);
-      return res.status(400).json({ error: "Invalid items JSON" });
+    const { category, title, items } = req.body;
+    let parsedItems = items;
+    if (typeof items === "string") {
+      parsedItems = JSON.parse(items);
+    }
+    let imageUrl = existing.image;
+    if (req.file) {
+      imageUrl = req.file.path;
     }
 
     const updatedLog = await Progress.findByIdAndUpdate(
       req.params.id,
       {
-        category: req.body.category,
-        title: req.body.title,
-        items,
+        category,
+        title,
+        items: parsedItems,
+        image: imageUrl
       },
       { new: true, runValidators: true }
     );
@@ -106,6 +111,20 @@ app.put("/progress/:id", requireAuth, async (req, res) => {
     res.json(updatedLog);
   } catch (err) {
     console.error("Error in PUT /progress:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+// ✅ Remove image from entry
+app.put("/progress/:id/remove-image", requireAuth, async (req, res) => {
+  try {
+    const updated = await Progress.findByIdAndUpdate(
+      req.params.id,
+      { image: "" },
+      { new: true }
+    );
+    res.json(updated);
+  } catch (err) {
+    console.error("Error in REMOVE-IMAGE /progress:", err);
     res.status(500).json({ error: err.message });
   }
 });
