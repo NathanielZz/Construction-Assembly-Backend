@@ -16,7 +16,7 @@ app.use(express.json());
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => {
-    console.error("❌ MongoDB connection error:", err.message);
+    console.error("❌ MongoDB connection error:", err.message, err.stack, err);
     process.exit(1);
   });
 
@@ -51,7 +51,7 @@ app.get("/progress", requireAuth, async (req, res) => {
     const logs = await Progress.find(query).sort({ category: 1, title: 1 });
     res.json(logs);
   } catch (err) {
-    console.error("Error in GET /progress:", err);
+    console.error("Error in GET /progress:", err.message, err.stack, err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -75,7 +75,7 @@ app.post("/progress", requireAuth, upload.single("image"), async (req, res) => {
     await newLog.save();
     res.json(newLog);
   } catch (err) {
-    console.error("Error in POST /progress:", err);
+    console.error("Error in POST /progress:", err.message, err.stack, err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -110,7 +110,7 @@ app.put("/progress/:id", requireAuth, upload.single("image"), async (req, res) =
 
     res.json(updatedLog);
   } catch (err) {
-    console.error("Error in PUT /progress:", err);
+    console.error("Error in PUT /progress:", err.message, err.stack, err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -124,7 +124,7 @@ app.put("/progress/:id/remove-image", requireAuth, async (req, res) => {
     );
     res.json(updated);
   } catch (err) {
-    console.error("Error in REMOVE-IMAGE /progress:", err);
+    console.error("Error in REMOVE-IMAGE /progress:", err.message, err.stack, err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -137,7 +137,7 @@ app.delete("/progress/:id", requireAuth, async (req, res) => {
 
     res.json({ message: "Entry deleted successfully" });
   } catch (err) {
-    console.error("Error in DELETE /progress:", err);
+    console.error("Error in DELETE /progress:", err.message, err.stack, err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -159,7 +159,7 @@ app.get("/progress/search", requireAuth, async (req, res) => {
     }).sort({ category: 1, title: 1 });
     res.json(results);
   } catch (err) {
-    console.error("Error in SEARCH /progress:", err);
+    console.error("Error in SEARCH /progress:", err.message, err.stack, err);
     res.status(500).json({ error: err.message });
   }
 });
