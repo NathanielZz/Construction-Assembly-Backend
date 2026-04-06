@@ -8,8 +8,16 @@ require("dotenv").config();
 const Progress = require("./models/Progress.js");
 const upload = require("./config/multer");
 
+
 const app = express();
-app.use(cors());
+// Restrict CORS to only allow Vercel frontend
+app.use(cors({
+  origin: [
+    "https://construction-assembly.vercel.app",
+    "http://localhost:3000" // allow local dev
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // Connect to MongoDB
