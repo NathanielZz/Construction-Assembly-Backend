@@ -51,7 +51,19 @@ function requireAuth(req, res, next) {
   }
 }
 
-// ✅ Get entries
+// ✅ Public get entries (no auth)
+app.get("/public/progress", async (req, res) => {
+  try {
+    const { category } = req.query;
+    const query = category && category !== "all" ? { category } : {};
+    const logs = await Progress.find(query).sort({ category: 1, title: 1 });
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Get entries (admin only)
 app.get("/progress", requireAuth, async (req, res) => {
   try {
     const { category } = req.query;
