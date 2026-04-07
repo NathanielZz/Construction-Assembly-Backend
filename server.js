@@ -72,8 +72,8 @@ app.get("/public/progress", async (req, res) => {
   }
 });
 
-// ✅ Get entries (admin only)
-app.get("/progress", requireAuth, async (req, res) => {
+// ✅ Get entries (public)
+app.get("/progress", async (req, res) => {
   try {
     const { category } = req.query;
     const query = category && category !== "all" ? { category } : {};
