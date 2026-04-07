@@ -1,0 +1,27 @@
+[
+  {
+    "key": "all",
+    "label": "All",
+    "order": 0
+  },
+  {
+    "key": "singlePhase",
+    "label": "Single Phase",
+    "order": 1
+  },
+  {
+    "key": "threePhase",
+    "label": "Three Phase",
+    "order": 2
+  },
+  {
+    "key": "anchor",
+    "label": "Anchor",
+    "order": 3
+  },
+  {
+    "key": "secondary",
+    "label": "Secondary",
+    "order": 4
+  }
+]

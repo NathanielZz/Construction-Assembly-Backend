@@ -1,13 +1,13 @@
+
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
-
 const Progress = require("./models/Progress.js");
 const upload = require("./config/multer");
-
 
 const app = express();
 // Restrict CORS to only allow Vercel frontend
@@ -19,6 +19,15 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+// Categories management route (must be after app is defined)
+const categoriesRoute = require("./routes/categories");
+// Register categories API
+// GET /categories is public, others require auth
+app.use("/categories", (req, res, next) => {
+  if (req.method === "GET") return categoriesRoute(req, res, next);
+  return requireAuth(req, res, () => categoriesRoute(req, res, next));
+});
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
