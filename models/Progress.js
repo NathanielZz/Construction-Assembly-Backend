@@ -7,11 +7,13 @@ const itemSchema = new mongoose.Schema({
 });
 
 
+
 const progressSchema = new mongoose.Schema({
   category: { type: String, required: true, trim: true }, // ✅ camelCase category
   title: { type: String, required: true, trim: true },
   items: [itemSchema],
-  image: { type: String, default: "" } // Cloudinary image URL
+  image: { type: String, default: "" }, // Cloudinary image URL
+  hidden: { type: Boolean, default: false } // For hiding cards
 }, { timestamps: true });
 
 module.exports = mongoose.model("Progress", progressSchema);

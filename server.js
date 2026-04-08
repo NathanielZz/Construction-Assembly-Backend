@@ -1,5 +1,4 @@
-
-
+// --- All requires at the top ---
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -9,18 +8,20 @@ require("dotenv").config();
 const Progress = require("./models/Progress.js");
 const upload = require("./config/multer");
 
+// --- Initialize app ---
 const app = express();
-// Restrict CORS to only allow Vercel frontend
+
+// --- Middleware ---
 app.use(cors({
   origin: [
     "https://construction-assembly.vercel.app",
-    "http://localhost:3000" // allow local dev
+    "http://localhost:3000"
   ],
   credentials: true
 }));
 app.use(express.json());
 
-// Categories management route (must be after app is defined)
+// --- Categories management route ---
 const categoriesRoute = require("./routes/categories");
 // Register categories API
 // GET /categories is public, others require auth
@@ -63,8 +64,9 @@ function requireAuth(req, res, next) {
 // ✅ Public get entries (no auth)
 app.get("/public/progress", async (req, res) => {
   try {
-    const { category } = req.query;
+    const { category, showHidden } = req.query;
     const query = category && category !== "all" ? { category } : {};
+    if (!showHidden) query.hidden = { $ne: true };
     const logs = await Progress.find(query).sort({ category: 1, title: 1 });
     res.json(logs);
   } catch (err) {
@@ -75,8 +77,9 @@ app.get("/public/progress", async (req, res) => {
 // ✅ Get entries (public)
 app.get("/progress", async (req, res) => {
   try {
-    const { category } = req.query;
+    const { category, showHidden } = req.query;
     const query = category && category !== "all" ? { category } : {};
+    if (!showHidden) query.hidden = { $ne: true };
     const logs = await Progress.find(query).sort({ category: 1, title: 1 });
     res.json(logs);
   } catch (err) {
@@ -212,6 +215,42 @@ app.get("/progress/download", requireAuth, async (req, res) => {
     res.send(output);
   } catch (err) {
     console.error("Error in DOWNLOAD /progress:", err.message, err.stack, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Place these routes after all middleware and before app.listen ---
+
+// Duplicate an entry (deep copy, new _id, new timestamps)
+app.post("/progress/:id/duplicate", requireAuth, async (req, res) => {
+  try {
+    const orig = await Progress.findById(req.params.id);
+    if (!orig) return res.status(404).json({ error: "Entry not found" });
+    const copy = new Progress({
+      category: orig.category,
+      title: orig.title + " (Copy)",
+      items: JSON.parse(JSON.stringify(orig.items)),
+      image: orig.image,
+      hidden: false
+    });
+    await copy.save();
+    res.json(copy);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Hide/unhide an entry
+app.put("/progress/:id/hide", requireAuth, async (req, res) => {
+  try {
+    const { hide } = req.body;
+    const updated = await Progress.findByIdAndUpdate(
+      req.params.id,
+      { hidden: !!hide },
+      { new: true }
+    );
+    res.json(updated);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
