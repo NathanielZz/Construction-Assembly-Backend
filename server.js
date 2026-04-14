@@ -174,8 +174,8 @@ app.delete("/progress/:id", requireAuth, async (req, res) => {
   }
 });
 
-// ✅ Search entries
-app.get("/progress/search", requireAuth, async (req, res) => {
+// ✅ Search entries (public)
+app.get("/progress/search", async (req, res) => {
   try {
     const { q, filter } = req.query;
     if (!q) return res.status(400).json({ error: "Search query (q) is required" });
