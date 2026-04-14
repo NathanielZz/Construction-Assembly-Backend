@@ -177,18 +177,36 @@ app.delete("/progress/:id", requireAuth, async (req, res) => {
 // ✅ Search entries
 app.get("/progress/search", requireAuth, async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, filter } = req.query;
     if (!q) return res.status(400).json({ error: "Search query (q) is required" });
     const regex = new RegExp(q, "i");
-    const results = await Progress.find({
-      $or: [
-        { title: regex },
-        { category: regex },
-        { items: { $elemMatch: { code: regex } } },
-        { items: { $elemMatch: { description: regex } } },
-        { items: { $elemMatch: { quantity: regex } } }
-      ]
-    }).sort({ category: 1, title: 1 });
+    let searchCond = {};
+    if (filter === "title") {
+      searchCond = { title: regex };
+    } else if (filter === "code") {
+      searchCond = { items: { $elemMatch: { code: regex } } };
+    } else if (filter === "description") {
+      searchCond = { items: { $elemMatch: { description: regex } } };
+    } else if (filter === "all" || !filter) {
+      searchCond = {
+        $or: [
+          { title: regex },
+          { items: { $elemMatch: { code: regex } } },
+          { items: { $elemMatch: { description: regex } } }
+        ]
+      };
+    } else {
+      // fallback: search all
+      searchCond = {
+        $or: [
+          { title: regex },
+          { items: { $elemMatch: { code: regex } } },
+          { items: { $elemMatch: { description: regex } } }
+        ]
+      };
+    }
+    console.log('SEARCH /progress:', { filter, q, searchCond });
+    const results = await Progress.find(searchCond).sort({ category: 1, title: 1 });
     res.json(results);
   } catch (err) {
     console.error("Error in SEARCH /progress:", err.message, err.stack, err);
