@@ -37,7 +37,7 @@ router.post('/', async (req, res) => {
 // EDIT a category (can update order)
 router.put('/:key', async (req, res) => {
   try {
-    const { label, newKey, order } = req.body;
+    const { label, newKey, order, hidden } = req.body;
     const { key } = req.params;
     const cat = await Category.findOne({ key });
     if (!cat) return res.status(404).json({ error: 'Category not found' });
@@ -48,6 +48,7 @@ router.put('/:key', async (req, res) => {
     }
     if (label) cat.label = label;
     if (typeof order === 'number') cat.order = order;
+    if (typeof hidden === 'boolean') cat.hidden = hidden;
     await cat.save();
     // Re-number all orders to match their array index
     const all = await Category.find().sort({ order: 1 });
