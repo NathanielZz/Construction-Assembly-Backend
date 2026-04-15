@@ -1,9 +1,33 @@
+
+
 const express = require('express');
 const router = express.Router();
 
 const Category = require('../models/Category');
 const Progress = require('../models/Progress');
 
+// ...existing code...
+
+// BULK SAVE categories (replace all)
+router.post('/bulk-save', async (req, res) => {
+  try {
+    const { categories } = req.body;
+    if (!Array.isArray(categories)) return res.status(400).json({ error: 'Categories array required' });
+    // Remove all existing categories
+    await Category.deleteMany({});
+    // Insert all new categories
+    await Category.insertMany(categories.map((cat, i) => ({
+      key: cat.key,
+      label: cat.label,
+      order: typeof cat.order === 'number' ? cat.order : i,
+      hidden: !!cat.hidden
+    })));
+    const cats = await Category.find().sort({ order: 1 });
+    res.json({ success: true, categories: cats });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET all categories (sorted by order)
 router.get('/', async (req, res) => {
