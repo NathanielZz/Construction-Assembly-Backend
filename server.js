@@ -1,3 +1,59 @@
+// --- Materials model ---
+const Material = require("./models/Material.js");
+
+// --- Materials API ---
+// Get all materials (public)
+app.get("/materials", async (req, res) => {
+  try {
+    const materials = await Material.find().sort({ name: 1 });
+    res.json(materials);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add a new material (auth required)
+app.post("/materials", requireAuth, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: "Name is required" });
+    const exists = await Material.findOne({ name: name.trim() });
+    if (exists) return res.status(409).json({ error: "Material already exists" });
+    const material = new Material({ name: name.trim() });
+    await material.save();
+    res.json(material);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Edit a material (auth required)
+app.put("/materials/:id", requireAuth, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: "Name is required" });
+    const material = await Material.findByIdAndUpdate(
+      req.params.id,
+      { name: name.trim() },
+      { new: true, runValidators: true }
+    );
+    if (!material) return res.status(404).json({ error: "Material not found" });
+    res.json(material);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a material (auth required)
+app.delete("/materials/:id", requireAuth, async (req, res) => {
+  try {
+    const material = await Material.findByIdAndDelete(req.params.id);
+    if (!material) return res.status(404).json({ error: "Material not found" });
+    res.json({ message: "Material deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 // --- All requires at the top ---
 const express = require("express");
 const mongoose = require("mongoose");
