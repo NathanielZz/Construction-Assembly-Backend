@@ -3,13 +3,25 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 
+
 const app = express();
+// Always parse JSON and enable CORS before any routes
+app.use(express.json());
+app.use(cors({
+  origin: [
+    "https://construction-assembly.vercel.app",
+    "http://localhost:3000"
+  ],
+  credentials: true
+}));
 
 const Material = require("./models/Material.js");
 
-// --- Materials API ---
+// --- Materials API as router (like categories) ---
+const expressMaterialsRouter = require('express').Router();
+
 // Get all materials (public)
-app.get("/materials", async (req, res) => {
+expressMaterialsRouter.get('/', async (req, res) => {
   try {
     const materials = await Material.find().sort({ name: 1 });
     res.json(materials);
@@ -19,12 +31,12 @@ app.get("/materials", async (req, res) => {
 });
 
 // Add a new material (auth required)
-app.post("/materials", requireAuth, async (req, res) => {
+expressMaterialsRouter.post('/', requireAuth, async (req, res) => {
   try {
     const { name } = req.body;
-    if (!name || !name.trim()) return res.status(400).json({ error: "Name is required" });
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
     const exists = await Material.findOne({ name: name.trim() });
-    if (exists) return res.status(409).json({ error: "Material already exists" });
+    if (exists) return res.status(409).json({ error: 'Material already exists' });
     const material = new Material({ name: name.trim() });
     await material.save();
     res.json(material);
@@ -34,16 +46,16 @@ app.post("/materials", requireAuth, async (req, res) => {
 });
 
 // Edit a material (auth required)
-app.put("/materials/:id", requireAuth, async (req, res) => {
+expressMaterialsRouter.put('/:id', requireAuth, async (req, res) => {
   try {
     const { name } = req.body;
-    if (!name || !name.trim()) return res.status(400).json({ error: "Name is required" });
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
     const material = await Material.findByIdAndUpdate(
       req.params.id,
       { name: name.trim() },
       { new: true, runValidators: true }
     );
-    if (!material) return res.status(404).json({ error: "Material not found" });
+    if (!material) return res.status(404).json({ error: 'Material not found' });
     res.json(material);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -51,15 +63,18 @@ app.put("/materials/:id", requireAuth, async (req, res) => {
 });
 
 // Delete a material (auth required)
-app.delete("/materials/:id", requireAuth, async (req, res) => {
+expressMaterialsRouter.delete('/:id', requireAuth, async (req, res) => {
   try {
     const material = await Material.findByIdAndDelete(req.params.id);
-    if (!material) return res.status(404).json({ error: "Material not found" });
-    res.json({ message: "Material deleted successfully" });
+    if (!material) return res.status(404).json({ error: 'Material not found' });
+    res.json({ message: 'Material deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Register the materials router
+app.use('/materials', expressMaterialsRouter);
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
@@ -70,14 +85,7 @@ const upload = require("./config/multer");
 // ...existing code...
 
 // --- Middleware ---
-app.use(cors({
-  origin: [
-    "https://construction-assembly.vercel.app",
-    "http://localhost:3000"
-  ],
-  credentials: true
-}));
-app.use(express.json());
+
 
 // --- Categories management route ---
 const categoriesRoute = require("./routes/categories");
