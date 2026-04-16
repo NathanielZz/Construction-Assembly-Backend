@@ -20,10 +20,10 @@ const Material = require("./models/Material.js");
 // --- Materials API as router (like categories) ---
 const expressMaterialsRouter = require('express').Router();
 
-// Get all materials (public)
+// Get all materials (public) - only return those with a valid name
 expressMaterialsRouter.get('/', async (req, res) => {
   try {
-    const materials = await Material.find().sort({ name: 1 });
+    const materials = await Material.find({ name: { $exists: true, $ne: "" } }).sort({ name: 1 });
     res.json(materials);
   } catch (err) {
     res.status(500).json({ error: err.message });
