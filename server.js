@@ -1,4 +1,10 @@
-// --- Materials model ---
+// --- All requires at the top ---
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+
+const app = express();
+
 const Material = require("./models/Material.js");
 
 // --- Materials API ---
@@ -54,10 +60,6 @@ app.delete("/materials/:id", requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-// --- All requires at the top ---
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
@@ -65,7 +67,7 @@ const Progress = require("./models/Progress.js");
 const upload = require("./config/multer");
 
 // --- Initialize app ---
-const app = express();
+// ...existing code...
 
 // --- Middleware ---
 app.use(cors({
