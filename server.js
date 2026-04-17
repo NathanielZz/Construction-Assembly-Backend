@@ -4,16 +4,20 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 
 
+
 const app = express();
 // Always parse JSON and enable CORS before any routes
 app.use(express.json());
 app.use(cors({
   origin: [
-    "https://construction-assembly.vercel.app",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "https://construction-assembly.vercel.app"
   ],
   credentials: true
 }));
+// --- BOM export route ---
+const bomRoute = require('./routes/bom');
+app.use('/bom', bomRoute);
 
 const Material = require("./models/Material.js");
 
