@@ -37,11 +37,14 @@ expressMaterialsRouter.get('/', async (req, res) => {
 // Add a new material (auth required)
 expressMaterialsRouter.post('/', requireAuth, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, unitOfMeasure } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
     const exists = await Material.findOne({ name: name.trim() });
     if (exists) return res.status(409).json({ error: 'Material already exists' });
-    const material = new Material({ name: name.trim() });
+    const material = new Material({
+      name: name.trim(),
+      unitOfMeasure: unitOfMeasure && unitOfMeasure.trim() ? unitOfMeasure.trim() : 'Unit/s'
+    });
     await material.save();
     res.json(material);
   } catch (err) {
@@ -52,11 +55,15 @@ expressMaterialsRouter.post('/', requireAuth, async (req, res) => {
 // Edit a material (auth required)
 expressMaterialsRouter.put('/:id', requireAuth, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, unitOfMeasure } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+    const update = { name: name.trim() };
+    if (unitOfMeasure && unitOfMeasure.trim()) {
+      update.unitOfMeasure = unitOfMeasure.trim();
+    }
     const material = await Material.findByIdAndUpdate(
       req.params.id,
-      { name: name.trim() },
+      update,
       { new: true, runValidators: true }
     );
     if (!material) return res.status(404).json({ error: 'Material not found' });

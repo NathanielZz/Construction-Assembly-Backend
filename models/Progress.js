@@ -3,7 +3,8 @@ const mongoose = require("mongoose");
 const itemSchema = new mongoose.Schema({
   code: { type: String, required: true },
   description: { type: String, required: true },
-  quantity: { type: String, required: false } // Now optional
+  quantity: { type: String, required: false }, // Now optional
+  unitOfMeasure: { type: String, required: false, default: '' }
 });
 
 
